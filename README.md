@@ -1,9 +1,9 @@
-# 🚿 Wash Cars -
+ 🚿 Wash Cars -
 Plataforma Web Integrada para Revolucionar o Agendamento e a Gestão de Lava Jatos.
 
 ---
 
-## 📖 Contexto Acadêmico e Profissional
+##  Contexto Acadêmico e Profissional
 
 O **Wash Cars** é um projeto desenvolvido com dupla finalidade: como peça central de **Portfólio Pessoal** e como projeto prático para o curso de **Análise e Desenvolvimento de Sistemas (ADS)** no **Centro Universitário de Brasília (UniCEUB)**.
 
@@ -15,7 +15,7 @@ Esta iniciativa simula um ambiente real de desenvolvimento de software, aplicand
 
 ---
 
-## 🎯 Visão Geral do Projeto
+##  Visão Geral do Projeto
 
 ### O Problema
 Muitos lava jatos ainda realizam o agendamento de clientes através de processos manuais ou mensagens soltas. Esse cenário resulta em retrabalho operacional, confusão de horários e uma experiência limitada para o cliente, que não possui um histórico de seus veículos e serviços.
@@ -28,7 +28,7 @@ O **Wash Cars** propõe uma plataforma web unificada (no padrão visual *Dark Ed
 
 ---
 
-## 🚀 Escopo do Projeto (MVP)
+##  Escopo do Projeto (MVP)
 
 O objetivo do MVP (Produto Mínimo Viável) é entregar um fluxo completo de agendamento funcional e seguro.
 
