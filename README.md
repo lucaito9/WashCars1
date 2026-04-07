@@ -1,4 +1,4 @@
- 🚿 Wash Cars -
+  Wash Cars  -
 Plataforma Web Integrada para Revolucionar o Agendamento e a Gestão de Lava Jatos.
 
 ---
