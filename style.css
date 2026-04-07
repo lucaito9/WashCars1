@@ -1,0 +1,149 @@
+/* style.css - Wash Cars Dark Premium */
+:root {
+    --bg-body: #0f1014;       /* Preto quase absoluto */
+    --bg-card: #1b1e23;       /* Cinza chumbo */
+    --text-main: #e0e0e0;     /* Branco suave */
+    --text-muted: #a0a0a0;    /* Cinza claro */
+    --primary: #3b82f6;       /* Azul Royal Moderno */
+    --primary-hover: #2563eb;
+    --accent: #ffd700;        /* Dourado para detalhes */
+    --border-color: #2d3748;
+}
+
+body {
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* --- Typography & Elements --- */
+h1, h2, h3, h4, h5, h6 {
+    color: #ffffff;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+a { text-decoration: none; }
+
+/* --- Navbar --- */
+.navbar {
+    background-color: rgba(15, 16, 20, 0.95) !important; /* Fundo escuro levemente transparente */
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.navbar-brand img {
+    max-height: 45px;
+    filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.5)); /* Brilho suave na logo */
+}
+
+/* --- Hero Section (Banner) --- */
+.hero-section {
+    background: linear-gradient(to bottom, rgba(15, 16, 20, 0.3), var(--bg-body)), 
+                url('https://images.pexels.com/photos/3311574/pexels-photo-3311574.jpeg?auto=compress&cs=tinysrgb&w=1600');
+    background-size: cover;
+    background-position: center;
+    padding: 160px 0 100px;
+    border-bottom: 1px solid var(--border-color);
+    position: relative;
+}
+
+/* --- Cards (Lava Jatos e Agendamentos) --- */
+.card, .card-dashboard {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+    color: var(--text-main);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(59, 130, 246, 0.1); /* Brilho azul ao passar o mouse */
+    border-color: var(--primary);
+}
+
+.card-header {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-color);
+    color: white;
+}
+
+/* --- Inputs e Formulários Dark --- */
+.form-control, .form-select {
+    background-color: #090a0c;
+    border: 1px solid var(--border-color);
+    color: white;
+    padding: 12px;
+    border-radius: 10px;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: #000;
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Placeholder precisa ser visível */
+::placeholder { color: #666 !important; opacity: 1; }
+
+/* --- FIX 1: Setinha branca nas caixas de seleção (<select>) --- */
+.form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+}
+
+/* --- FIX 2: Ícones de Calendário, Relógio e setinhas de número visíveis --- */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    filter: invert(1);
+}
+
+/* --- Tabelas Dark --- */
+.table {
+    color: var(--text-main);
+    border-color: var(--border-color);
+}
+.table-hover tbody tr:hover {
+    color: white;
+    background-color: rgba(255,255,255,0.05);
+}
+.table thead th {
+    background-color: var(--bg-card);
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border-color);
+}
+
+/* --- Botões --- */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%);
+    border: none;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+.btn-primary:hover {
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+    transform: scale(1.02);
+}
+
+.btn-outline-light { border-color: var(--border-color); color: var(--text-muted); }
+.btn-outline-light:hover { background-color: var(--border-color); color: white; }
+
+/* --- Badges e Preços --- */
+.price-tag {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.text-muted { color: var(--text-muted) !important; }
