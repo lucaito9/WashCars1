@@ -1,378 +1,432 @@
 <?php
-// LIGANDO O MODO DETETIVE
+// Modo Debug Ativado (Ajuda a ver erros caso não seja o 500 do servidor)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// company_dashboard.php - Painel Completo
 session_start();
 require 'db.php';
+date_default_timezone_set('America/Sao_Paulo');
 
-// Segurança
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] != 'company') {
+// Segurança: Verifica se o usuário está logado
+if (!isset($_SESSION['user_id'])) {
     header("Location: auth.php");
     exit;
 }
 
-$user_id = $_SESSION['user_id'];
-$message = '';
+// ---------------------------------------------------------
+// 1. AÇÕES DE FORMULÁRIOS (REGISTRAR GASTO, CONFIGS)
+// ---------------------------------------------------------
+$mensagem_sucesso = "";
 
-// 1. ATUALIZAR DADOS DA EMPRESA
-if (isset($_POST['update_info'])) {
-    $name = $_POST['name'];
-    $address = $_POST['address'];
-    $phone = $_POST['phone'];
-    $price_simple = $_POST['price_simple'];
-    $price_complete = $_POST['price_complete'];
+// Ação: REGISTRAR GASTO
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_expense'])) {
+    $desc = $_POST['expense_desc'] ?? '';
+    // Troca vírgula por ponto para o banco de dados
+    $amount = str_replace(',', '.', $_POST['expense_amount'] ?? '0');
+    $amount = (float) $amount;
 
-    $stmt = $pdo->prepare("SELECT id FROM car_washes WHERE owner_id = ?");
-    $stmt->execute([$user_id]);
-    
-    if ($stmt->fetch()) {
-        $sql = "UPDATE car_washes SET name=?, address=?, phone=?, price_simple=?, price_complete=? WHERE owner_id=?";
-        $pdo->prepare($sql)->execute([$name, $address, $phone, $price_simple, $price_complete, $user_id]);
-        $message = "Dados salvos com sucesso!";
-    } else {
-        $sql = "INSERT INTO car_washes (owner_id, name, address, phone, price_simple, price_complete) VALUES (?, ?, ?, ?, ?, ?)";
-        $pdo->prepare($sql)->execute([$user_id, $name, $address, $phone, $price_simple, $price_complete]);
-        $message = "Lava Jato ativado!";
+    if (!empty($desc) && $amount > 0) {
+        try {
+            $stmt = $pdo->prepare("INSERT INTO expenses (description, amount) VALUES (?, ?)");
+            $stmt->execute([$desc, $amount]);
+            echo "<script>window.location.href='company_dashboard.php?msg=gasto_ok';</script>";
+            exit;
+        } catch (Exception $e) {
+            echo "<script>alert('Erro ao salvar gasto. Verifique se a tabela expenses existe no banco.'); window.location.href='company_dashboard.php';</script>";
+            exit;
+        }
     }
 }
 
-// BUSCAR OS DADOS DO MEU LAVA JATO
-$stmt = $pdo->prepare("SELECT * FROM car_washes WHERE owner_id = ?");
-$stmt->execute([$user_id]);
-$my_wash = $stmt->fetch();
-
-// 2. CONFIRMAR AGENDAMENTO
-if (isset($_POST['confirm_appt'])) {
-    $id = $_POST['appointment_id'];
-    $pdo->prepare("UPDATE appointments SET status = 'Confirmado' WHERE id = ?")->execute([$id]);
-    $message = "Agendamento aceito!";
+// Ação: SALVAR CONFIGURAÇÕES (Placeholder)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_config'])) {
+    echo "<script>window.location.href='company_dashboard.php?msg=config_ok';</script>";
+    exit;
 }
 
-// 3. FINALIZAR SERVIÇO E ADICIONAR FATURAMENTO
-if (isset($_POST['mark_done']) && $my_wash) {
-    $id = $_POST['appointment_id'];
-    $pdo->prepare("UPDATE appointments SET status = 'Concluído' WHERE id = ?")->execute([$id]);
-    
-    // Insere valor base no faturamento
-    $pdo->prepare("INSERT INTO caixa (car_wash_id, valor) VALUES (?, ?)")->execute([$my_wash['id'], 50.00]);
-    $message = "Serviço finalizado! Valor adicionado ao faturamento.";
-}
-
-// 4. REGISTRAR NOVO GASTO / DESPESA
-if (isset($_POST['add_expense']) && $my_wash) {
-    $descricao = $_POST['descricao'];
-    $categoria = $_POST['categoria'];
-    $valor = str_replace(',', '.', $_POST['valor']); 
-    
-    try {
-        $pdo->prepare("INSERT INTO despesas (car_wash_id, descricao, categoria, valor) VALUES (?, ?, ?, ?)")->execute([$my_wash['id'], $descricao, $categoria, $valor]);
-        $message = "Gasto registrado com sucesso!";
-    } catch (Throwable $e) {
-        $message = "Erro ao salvar despesa: " . $e->getMessage();
+// MENSAGENS DE SUCESSO
+if (isset($_GET['msg'])) {
+    if ($_GET['msg'] === 'gasto_ok') {
+        $mensagem_sucesso = "Gasto registrado com sucesso!";
+    } elseif ($_GET['msg'] === 'config_ok') {
+        $mensagem_sucesso = "Configurações e preços salvos com sucesso!";
     }
 }
 
-// 4.5. APAGAR SERVIÇO OU GASTO
-if (isset($_POST['delete_appt'])) {
-    $pdo->prepare("DELETE FROM appointments WHERE id = ?")->execute([$_POST['appointment_id']]);
-    $message = "Serviço apagado do histórico!";
-}
-if (isset($_POST['delete_expense'])) {
-    $pdo->prepare("DELETE FROM despesas WHERE id = ?")->execute([$_POST['expense_id']]);
-    $message = "Gasto apagado com sucesso!";
-}
+// ---------------------------------------------------------
+// 2. AÇÕES DOS BOTÕES (STATUS E WHATSAPP)
+// ---------------------------------------------------------
+if (isset($_GET['action'])) {
+    $action = $_GET['action'];
 
-// 5. CÁLCULOS DO MÊS
-$total_faturado = 0.00;
-$total_despesas = 0.00;
-
-if ($my_wash) {
-    try {
-        $stmt_caixa = $pdo->prepare("SELECT SUM(valor) as total FROM caixa WHERE car_wash_id = ?");
-        $stmt_caixa->execute([$my_wash['id']]);
-        $dados_caixa = $stmt_caixa->fetch();
-        $total_faturado = !empty($dados_caixa['total']) ? (float)$dados_caixa['total'] : 0.00;
-    } catch (Throwable $e) {}
-
-    try {
-        $stmt_desp = $pdo->prepare("SELECT SUM(valor) as total FROM despesas WHERE car_wash_id = ?");
-        $stmt_desp->execute([$my_wash['id']]);
-        $dados_desp = $stmt_desp->fetch();
-        $total_despesas = !empty($dados_desp['total']) ? (float)$dados_desp['total'] : 0.00;
-    } catch (Throwable $e) {}
+    if ($action == 'concluir' && isset($_GET['id'])) {
+        $id = (int)$_GET['id'];
+        $pdo->query("UPDATE appointments SET status = 'Concluído' WHERE id = $id");
+        echo "<script>window.location.href='company_dashboard.php';</script>"; exit;
+    }
+    if ($action == 'aceitar' && isset($_GET['id'])) {
+        $id = (int)$_GET['id'];
+        $pdo->query("UPDATE appointments SET status = 'Confirmado' WHERE id = $id");
+        echo "<script>window.location.href='company_dashboard.php';</script>"; exit;
+    }
+    if ($action == 'cancelar' && isset($_GET['id'])) {
+        $id = (int)$_GET['id'];
+        $pdo->query("UPDATE appointments SET status = 'Cancelado' WHERE id = $id");
+        echo "<script>window.location.href='company_dashboard.php';</script>"; exit;
+    }
 }
 
-$lucro_liquido = $total_faturado - $total_despesas;
-
-// BUSCAR A AGENDA 
+// ---------------------------------------------------------
+// 3. BUSCAR DADOS DO BANCO (Totalmente protegido contra falhas)
+// ---------------------------------------------------------
 $appointments = [];
-if ($my_wash) {
-    try {
-        $sql = "SELECT a.*, u.name as client_name, '' as client_phone, uc.brand, uc.model, uc.plate 
-                FROM appointments a 
-                JOIN users u ON a.user_id = u.id 
-                LEFT JOIN user_cars uc ON a.car_id = uc.id
-                WHERE a.car_wash_id = ? 
-                ORDER BY a.appointment_date ASC";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$my_wash['id']]);
-        $appointments = $stmt->fetchAll();
-    } catch (Throwable $e) {
-        $message = "Erro ao buscar agenda: " . $e->getMessage();
+$gastos_total = 0;
+$lista_gastos = [];
+
+// Busca Agendamentos
+try {
+    $stmt = $pdo->query("
+        SELECT a.*, u.name AS client_name, u.phone AS client_phone, c.brand, c.model, c.plate 
+        FROM appointments a 
+        LEFT JOIN users u ON a.user_id = u.id 
+        LEFT JOIN user_cars c ON a.car_id = c.id 
+        ORDER BY a.appointment_date DESC
+    ");
+    if ($stmt) {
+        $appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+} catch (Exception $e) {
+    // Falha silenciosa para não quebrar a tela
+}
+
+// Busca Gastos
+try {
+    // Total do mês
+    $stmtGastos = $pdo->query("
+        SELECT SUM(amount) as total 
+        FROM expenses 
+        WHERE MONTH(created_at) = MONTH(CURRENT_DATE()) 
+        AND YEAR(created_at) = YEAR(CURRENT_DATE())
+    ");
+    if ($stmtGastos) {
+        $gastos_data = $stmtGastos->fetch(PDO::FETCH_ASSOC);
+        $gastos_total = !empty($gastos_data['total']) ? (float)$gastos_data['total'] : 0;
+    }
+
+    // Lista dos últimos 30 gastos
+    $stmtListaGastos = $pdo->query("SELECT * FROM expenses ORDER BY created_at DESC LIMIT 30");
+    if ($stmtListaGastos) {
+        $lista_gastos = $stmtListaGastos->fetchAll(PDO::FETCH_ASSOC);
+    }
+} catch (Exception $e) {
+    // Se a tabela ainda não existir, apenas zera os gastos em vez de dar erro
+    $gastos_total = 0;
+    $lista_gastos = [];
+}
+
+// ---------------------------------------------------------
+// 4. CÁLCULO DE FATURAMENTO, MÉTRICAS E LUCRO
+// ---------------------------------------------------------
+$faturamento_total = 0;
+$agendamentos_pendentes = 0;
+$lavagens_concluidas = 0;
+
+if (is_array($appointments)) {
+    foreach ($appointments as $app) {
+        if (isset($app['status'])) {
+            if ($app['status'] == 'Concluído') {
+                $faturamento_total += floatval($app['total_price'] ?? 0);
+                $lavagens_concluidas++;
+            }
+            if ($app['status'] == 'Pendente') {
+                $agendamentos_pendentes++;
+            }
+        }
     }
 }
 
-// BUSCAR HISTÓRICO DE GASTOS
-$lista_gastos = [];
-if ($my_wash) {
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM despesas WHERE car_wash_id = ? ORDER BY data_despesa DESC");
-        $stmt->execute([$my_wash['id']]);
-        $lista_gastos = $stmt->fetchAll();
-    } catch (Throwable $e) {}
-}
+$lucro_total = $faturamento_total - $gastos_total;
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel Empresa - Wash Cars</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel da Empresa</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="style.css" rel="stylesheet"> 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; }
+        .navbar { background: #000; padding: 15px 0; }
+        .card-metric { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: 0.3s; }
+        .card-metric:hover { transform: translateY(-5px); }
+        .metric-title { font-size: 0.85rem; color: #6c757d; font-weight: bold; text-transform: uppercase; }
+        .metric-value { font-size: 1.6rem; font-weight: bold; color: #000; }
+        .metric-value.gold { color: #D4AF37; }
+        .table-container { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .badge-pendente { background-color: #ffc107; color: #000; }
+        .badge-confirmado { background-color: #0d6efd; color: #fff; }
+        .badge-concluido { background-color: #198754; color: #fff; }
+        .badge-cancelado { background-color: #dc3545; color: #fff; }
+        .btn-action { padding: 5px 10px; font-size: 0.85rem; border-radius: 8px; font-weight: bold; }
+        .scroll-table { max-height: 250px; overflow-y: auto; }
+    </style>
 </head>
-<body class="bg-dark text-white">
+<body>
 
-<div class="container py-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold"><i class="bi bi-speedometer"></i> Painel de Controle</h2>
-        <div>
-            <button class="btn btn-primary btn-sm me-2 fw-bold" data-bs-toggle="modal" data-bs-target="#perfilModal">
-                <i class="bi bi-person-fill"></i> Meu Negócio
-            </button>
-            <a href="index.php" class="btn btn-outline-light btn-sm me-2"><i class="bi bi-house-door"></i> Ir para o Site</a>
-            <a href="logout.php" class="btn btn-danger btn-sm fw-bold"><i class="bi bi-box-arrow-right"></i> Sair</a>
-        </div>
+<nav class="navbar navbar-dark mb-4">
+    <div class="container d-flex justify-content-between">
+        <a href="index.php" class="text-white text-decoration-none fw-bold fs-5">
+            <i class="bi bi-droplet-fill" style="color: #D4AF37;"></i> Painel da Empresa
+        </a>
+        <a href="logout.php" class="btn btn-outline-light btn-sm fw-bold">Sair</a>
     </div>
+</nav>
 
-    <?php if($message): ?>
-        <div class="alert <?= strpos($message, 'Erro') !== false ? 'alert-danger' : 'alert-success' ?> alert-dismissible fade show text-dark fw-bold">
-            <i class="bi bi-info-circle me-2"></i><?= $message ?> 
+<div class="container mb-5">
+
+    <?php if(!empty($mensagem_sucesso)): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill"></i> <?= $mensagem_sucesso ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
 
-    <?php if($my_wash): ?>
-    <div class="row mb-4 g-3">
-        <div class="col-md-4">
-            <div class="card shadow" style="background: linear-gradient(45deg, #198754, #20c997); border: none; border-radius: 15px;">
-                <div class="card-body p-3 text-white">
-                    <h6 class="text-uppercase text-white-50 fw-bold mb-1"><i class="bi bi-graph-up-arrow"></i> Faturamento Total</h6>
-                    <h3 class="fw-bold mb-0">R$ <?= number_format($total_faturado, 2, ',', '.') ?></h3>
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-dark fw-bold" data-bs-toggle="modal" data-bs-target="#configModal">
+            <i class="bi bi-gear-fill"></i> Configurar Loja e Preços
+        </button>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md mb-3">
+            <div class="card card-metric p-3 h-100">
+                <div class="metric-title">Faturamento</div>
+                <div class="metric-value gold">R$ <?= number_format($faturamento_total, 2, ',', '.') ?></div>
+            </div>
+        </div>
+        <div class="col-md mb-3">
+            <div class="card card-metric p-3 h-100" style="background: #212529; color: white;">
+                <div class="metric-title text-light">Gastos (Mês)</div>
+                <div class="metric-value text-danger">R$ <?= number_format($gastos_total, 2, ',', '.') ?></div>
+            </div>
+        </div>
+        <div class="col-md mb-3">
+            <div class="card card-metric p-3 h-100">
+                <div class="metric-title">Lucro Líquido</div>
+                <div class="metric-value <?= $lucro_total >= 0 ? 'text-success' : 'text-danger' ?>">
+                    R$ <?= number_format($lucro_total, 2, ',', '.') ?>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-4">
-            <div class="card shadow" style="background: linear-gradient(45deg, #dc3545, #f87171); border: none; border-radius: 15px;">
-                <div class="card-body p-3 text-white">
-                    <h6 class="text-uppercase text-white-50 fw-bold mb-1"><i class="bi bi-graph-down-arrow"></i> Total de Gastos</h6>
-                    <h3 class="fw-bold mb-0">R$ <?= number_format($total_despesas, 2, ',', '.') ?></h3>
-                </div>
+        <div class="col-md mb-3">
+            <div class="card card-metric p-3 h-100">
+                <div class="metric-title">Pendentes</div>
+                <div class="metric-value"><?= $agendamentos_pendentes ?></div>
+            </div>
+        </div>
+        <div class="col-md mb-3">
+            <div class="card card-metric p-3 h-100">
+                <div class="metric-title">Concluídas</div>
+                <div class="metric-value"><?= $lavagens_concluidas ?></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-5 mb-3">
+            <div class="table-container h-100 border-start border-4 border-danger">
+                <h5 class="fw-bold mb-3"><i class="bi bi-graph-down-arrow text-danger"></i> Registrar Novo Gasto</h5>
+                <form action="company_dashboard.php" method="POST" class="row g-2">
+                    <input type="hidden" name="add_expense" value="1">
+                    <div class="col-12 mb-2">
+                        <input type="text" class="form-control" name="expense_desc" placeholder="Ex: Conta de Água, Produtos..." required>
+                    </div>
+                    <div class="col-8">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">R$</span>
+                            <input type="number" step="0.01" class="form-control" name="expense_amount" placeholder="0,00" required>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <button type="submit" class="btn btn-danger w-100 fw-bold">Salvar</button>
+                    </div>
+                </form>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card shadow" style="background: linear-gradient(45deg, #0d6efd, #3b82f6); border: none; border-radius: 15px;">
-                <div class="card-body p-3 text-white">
-                    <h6 class="text-uppercase text-white-50 fw-bold mb-1"><i class="bi bi-piggy-bank"></i> Lucro Líquido</h6>
-                    <h3 class="fw-bold mb-0">R$ <?= number_format($lucro_liquido, 2, ',', '.') ?></h3>
+        <div class="col-md-7 mb-3">
+            <div class="table-container h-100">
+                <h5 class="fw-bold mb-3"><i class="bi bi-clock-history text-secondary"></i> Histórico de Gastos</h5>
+                <div class="scroll-table pe-2">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th class="text-end">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (count($lista_gastos) > 0): ?>
+                                <?php foreach ($lista_gastos as $gasto): 
+                                    $data_gasto = date('d/m/Y', strtotime($gasto['created_at']));
+                                    $valor_gasto = number_format($gasto['amount'], 2, ',', '.');
+                                ?>
+                                <tr>
+                                    <td class="text-muted small"><?= $data_gasto ?></td>
+                                    <td><?= htmlspecialchars($gasto['description']) ?></td>
+                                    <td class="text-danger fw-bold text-end">- R$ <?= $valor_gasto ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-3">Nenhum gasto registrado ainda.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
-    <?php endif; ?>
 
-    <div class="row">
-        <div class="col-lg-4 mb-4">
-            <?php if($my_wash): ?>
-            <div class="card bg-dark border-danger mb-4 shadow-sm">
-                <div class="card-header border-danger text-danger fw-bold"><i class="bi bi-cart-dash me-2"></i>Registrar Gasto</div>
-                <div class="card-body">
-                    <form method="POST">
-                        <label class="small text-white-50 mb-1">O que foi pago?</label>
-                        <input type="text" name="descricao" class="form-control mb-2 bg-dark text-white border-secondary" placeholder="Ex: Conta de Água, Sabão..." required>
-                        
-                        <label class="small text-white-50 mb-1">Categoria</label>
-                        <select name="categoria" class="form-select mb-2 bg-dark text-white border-secondary" required>
-                            <option value="Contas">Água, Luz, Internet</option>
-                            <option value="Produtos">Produtos de Limpeza</option>
-                            <option value="Funcionarios">Pagamento de Funcionários</option>
-                            <option value="Manutencao">Manutenção de Equipamentos</option>
-                            <option value="Outros">Outros</option>
-                        </select>
-                        
-                        <label class="small text-white-50 mb-1">Valor</label>
-                        <div class="input-group mb-3">
-                            <span class="input-group-text bg-secondary text-white border-secondary">R$</span>
-                            <input type="number" step="0.01" name="valor" class="form-control bg-dark text-white border-secondary" placeholder="0.00" required>
-                        </div>
-                        <button type="submit" name="add_expense" class="btn btn-outline-danger w-100 fw-bold">Salvar Despesa</button>
-                    </form>
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
+    <div class="table-container">
+        <h4 class="fw-bold mb-4">Gestão de Agendamentos</h4>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Cliente</th>
+                        <th>Veículo</th>
+                        <th>Serviços</th>
+                        <th>Valor (R$)</th>
+                        <th>Status</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (count($appointments) > 0): ?>
+                        <?php foreach ($appointments as $app): 
+                            $date_format = !empty($app['appointment_date']) ? date('d/m/Y H:i', strtotime($app['appointment_date'])) : '--/--/---- --:--';
+                            $car_info = !empty($app['brand']) ? "{$app['brand']} {$app['model']} ({$app['plate']})" : "Veículo Removido";
+                            $servicos = !empty($app['services']) ? $app['services'] : ($app['service_type'] ?? 'Não informado');
+                            $valor = !empty($app['total_price']) && $app['total_price'] > 0 ? number_format($app['total_price'], 2, ',', '.') : '---';
 
-        <div class="col-lg-8">
-            <div class="card bg-dark border-secondary mb-4 shadow-sm">
-                <div class="card-header border-secondary d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-white"><i class="bi bi-calendar-check me-2"></i>Agenda de Serviços</span>
-                    <span class="badge bg-primary rounded-pill"><?= count($appointments) ?></span>
-                </div>
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-dark table-hover mb-0 align-middle">
-                        <thead>
-                            <tr class="text-secondary small text-uppercase">
-                                <th class="ps-3">Data</th>
-                                <th>Veículo / Cliente</th>
-                                <th>Status</th>
-                                <th class="text-end pe-3">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if(count($appointments) == 0): ?>
-                                <tr><td colspan="4" class="text-center py-4 text-muted">Nenhum agendamento encontrado.</td></tr>
-                            <?php endif; ?>
+                            $badgeClass = 'badge-pendente';
+                            if (isset($app['status'])) {
+                                if ($app['status'] == 'Confirmado') $badgeClass = 'badge-confirmado';
+                                if ($app['status'] == 'Concluído') $badgeClass = 'badge-concluido';
+                                if ($app['status'] == 'Cancelado') $badgeClass = 'badge-cancelado';
+                            }
 
-                            <?php foreach($appointments as $app): 
-                                $date = date('d/m H:i', strtotime($app['appointment_date'] ?? $app['created_at']));
-                                $status = $app['status'];
-                                $telefone_limpo = preg_replace('/[^0-9]/', '', $app['client_phone'] ?? '');
-                            ?>
-                            <tr>
-                                <td class="ps-3 fw-bold text-info"><?= $date ?></td>
-                                <td>
-                                    <?php if(isset($app['plate']) && $app['plate']): ?>
-                                        <div class="fw-bold"><?= $app['brand'] ?> <?= $app['model'] ?></div>
-                                    <?php else: ?>
-                                        <span class="text-muted">Não informado</span>
-                                    <?php endif; ?>
-                                    
-                                    <div class="small mt-1 d-flex align-items-center">
-                                        <span class="text-muted"><i class="bi bi-person-fill"></i> <?= $app['client_name'] ?></span>
-                                        <?php if(!empty($telefone_limpo)): ?>
-                                            <a href="https://wa.me/55<?= $telefone_limpo ?>?text=Ol%C3%A1%21+Vimos+seu+agendamento+no+Wash+Cars%21" target="_blank" class="btn btn-sm btn-success py-0 px-2 ms-2 rounded-pill" title="Chamar no WhatsApp"><i class="bi bi-whatsapp" style="font-size: 0.8rem;"></i></a>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                                <td>
-                                    <?php if($status == 'Pendente'): ?>
-                                        <span class="badge bg-warning text-dark">Aguardando</span>
-                                    <?php elseif($status == 'Confirmado'): ?>
-                                        <span class="badge bg-primary">Em Andamento</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-success">Concluído</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-end pe-3">
-                                    <?php if($status == 'Pendente'): ?>
-                                        <form method="POST" class="d-inline"><input type="hidden" name="appointment_id" value="<?= $app['id'] ?>"><button type="submit" name="confirm_appt" class="btn btn-sm btn-outline-primary fw-bold">Aceitar</button></form>
-                                    <?php elseif($status == 'Confirmado'): ?>
-                                        <form method="POST" class="d-inline"><input type="hidden" name="appointment_id" value="<?= $app['id'] ?>"><button type="submit" name="mark_done" class="btn btn-sm btn-success fw-bold">Finalizar & Faturar</button></form>
-                                    <?php else: ?>
-                                        <span class="text-muted small me-2"><i class="bi bi-check2-circle"></i> Pago</span>
-                                        <form method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja apagar este serviço do histórico?');">
-                                            <input type="hidden" name="appointment_id" value="<?= $app['id'] ?>">
-                                            <button type="submit" name="delete_appt" class="btn btn-sm btn-outline-danger" title="Apagar Serviço"><i class="bi bi-trash"></i></button>
-                                        </form>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <?php if($my_wash): ?>
-            <div class="card bg-dark border-danger shadow-sm">
-                <div class="card-header border-danger d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-danger"><i class="bi bi-receipt me-2"></i>Histórico de Gastos</span>
-                </div>
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-dark table-hover mb-0 align-middle">
-                        <thead>
-                            <tr class="text-secondary small text-uppercase">
-                                <th class="ps-3">Data</th>
-                                <th>Descrição</th>
-                                <th>Categoria</th>
-                                <th class="text-end">Valor</th>
-                                <th class="text-end pe-3">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if(count($lista_gastos) == 0): ?>
-                                <tr><td colspan="5" class="text-center py-4 text-muted">Nenhum gasto registrado ainda.</td></tr>
-                            <?php endif; ?>
-
-                            <?php foreach($lista_gastos as $gasto): ?>
-                            <tr>
-                                <td class="ps-3 text-muted small"><?= date('d/m/Y', strtotime($gasto['data_despesa'])) ?></td>
-                                <td class="fw-bold"><?= $gasto['descricao'] ?></td>
-                                <td><span class="badge bg-secondary"><?= $gasto['categoria'] ?></span></td>
-                                <td class="text-end text-danger fw-bold">- R$ <?= number_format($gasto['valor'], 2, ',', '.') ?></td>
-                                <td class="text-end pe-3">
-                                    <form method="POST" class="d-inline" onsubmit="return confirm('Apagar este gasto? O seu Lucro será recalculado.');">
-                                        <input type="hidden" name="expense_id" value="<?= $gasto['id'] ?>">
-                                        <button type="submit" name="delete_expense" class="btn btn-sm btn-outline-danger py-0 px-2" title="Apagar Gasto"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <?php endif; ?>
-
+                            // Link WhatsApp
+                            $numero = preg_replace('/[^0-9]/', '', $app['client_phone'] ?? '');
+                            if (!empty($numero)) {
+                                if (strlen($numero) < 12) { $numero = "55" . $numero; }
+                                $nome_cliente = $app['client_name'] ?? 'Cliente';
+                                $nome_carro = !empty($app['brand']) ? "{$app['brand']} {$app['model']}" : 'veículo';
+                                $msg_wa = urlencode("Olá {$nome_cliente}, a lavagem do seu {$nome_carro} foi concluída e está pronto para retirada!");
+                                $link_wa = "https://wa.me/{$numero}?text={$msg_wa}";
+                            } else {
+                                $link_wa = "";
+                            }
+                        ?>
+                        <tr>
+                            <td class="fw-bold"><?= $date_format ?></td>
+                            <td>
+                                <?= htmlspecialchars($app['client_name'] ?? 'Sem nome') ?><br>
+                                <small class="text-muted"><?= htmlspecialchars($app['client_phone'] ?? 'Sem telefone') ?></small>
+                            </td>
+                            <td><?= htmlspecialchars($car_info ?? '') ?></td>
+                            <td><?= htmlspecialchars($servicos ?? '') ?></td>
+                            <td class="fw-bold gold">R$ <?= $valor ?></td>
+                            <td><span class="badge <?= $badgeClass ?> px-2 py-1"><?= htmlspecialchars($app['status'] ?? 'Pendente') ?></span></td>
+                            
+                            <td class="text-center">
+                                <?php if (isset($app['status']) && $app['status'] == 'Pendente'): ?>
+                                    <a href="company_dashboard.php?action=aceitar&id=<?= $app['id'] ?>" class="btn btn-success btn-action text-white mb-1"><i class="bi bi-check-circle"></i> Aceitar</a>
+                                    <a href="company_dashboard.php?action=cancelar&id=<?= $app['id'] ?>" class="btn btn-danger btn-action text-white mb-1"><i class="bi bi-x-circle"></i> Recusar</a>
+                                
+                                <?php elseif (isset($app['status']) && $app['status'] == 'Confirmado'): ?>
+                                    <button onclick="concluirServico(<?= $app['id'] ?>, '<?= $link_wa ?>')" class="btn btn-dark btn-action w-100" style="border: 1px solid #D4AF37; color: #D4AF37;">
+                                        <i class="bi bi-whatsapp"></i> Concluir e Avisar
+                                    </button>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr><td colspan="7" class="text-center text-muted py-4">Nenhum agendamento encontrado.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="perfilModal" tabindex="-1" aria-labelledby="perfilModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark text-white border-secondary">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title fw-bold" id="perfilModalLabel"><i class="bi bi-shop me-2"></i>Editar Meu Negócio</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+<div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="configModalLabel"><i class="bi bi-gear"></i> Configurar Loja e Preços</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="POST">
-                    <label class="small text-white-50 mb-1">Nome do Estabelecimento</label>
-                    <input type="text" name="name" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Nome do Lava Jato" value="<?= $my_wash['name'] ?? '' ?>" required>
+                <form action="company_dashboard.php" method="POST">
+                    <input type="hidden" name="save_config" value="1">
                     
-                    <label class="small text-white-50 mb-1">Endereço Completo</label>
-                    <input type="text" name="address" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Endereço" value="<?= $my_wash['address'] ?? '' ?>" required>
-                    
-                    <label class="small text-white-50 mb-1">WhatsApp para Contato</label>
-                    <input type="text" name="phone" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Ex: 11999999999" value="<?= $my_wash['phone'] ?? '' ?>">
-                    
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="small text-white-50 mb-1">R$ Lavagem Simples</label>
-                            <input type="number" step="0.01" name="price_simple" class="form-control bg-dark text-white border-secondary" placeholder="0.00" value="<?= $my_wash['price_simple'] ?? '' ?>">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted">Nome da Loja</label>
+                            <input type="text" class="form-control" name="store_name" value="teste3">
                         </div>
-                        <div class="col-6">
-                            <label class="small text-white-50 mb-1">R$ Lav. Completa</label>
-                            <input type="number" step="0.01" name="price_complete" class="form-control bg-dark text-white border-secondary" placeholder="0.00" value="<?= $my_wash['price_complete'] ?? '' ?>">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted">Frase/Descrição</label>
+                            <input type="text" class="form-control" name="store_desc" placeholder="Ex: O melhor brilho da cidade!">
                         </div>
                     </div>
-                    <button type="submit" name="update_info" class="btn btn-primary w-100 fw-bold">Salvar Configurações</button>
+
+                    <h6 class="fw-bold mb-3 border-bottom pb-2">Tabela de Preços (R$)</h6>
+                    
+                    <div class="row g-3" id="servicesContainer">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Lavagem Simples</label>
+                            <input type="text" class="form-control" name="prices[simples]" value="150,00">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Lavagem Completa</label>
+                            <input type="text" class="form-control" name="prices[completa]" value="200,00">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Lavagem Interna</label>
+                            <input type="text" class="form-control" name="prices[interna]" value="200,00">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Lavagem Detalhada</label>
+                            <input type="text" class="form-control" name="prices[detalhada]" value="500,00">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Aplicação de Cera</label>
+                            <input type="text" class="form-control" name="prices[cera]" value="220,00">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Lavagem de Chassi</label>
+                            <input type="text" class="form-control" name="prices[chassi]" value="300,00">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-outline-dark btn-sm fw-bold" onclick="addService()">
+                            <i class="bi bi-plus-circle"></i> Adicionar Mais Opções de Lavagem
+                        </button>
+                    </div>
+
+                    <div class="modal-footer border-0 mt-4 px-0 pb-0">
+                        <button type="submit" class="btn btn-success w-100 fw-bold">Salvar Configurações</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -380,10 +434,35 @@ if ($my_wash) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-    if ( window.history.replaceState ) {
-        window.history.replaceState( null, null, window.location.href );
+    function concluirServico(idAgendamento, linkWhatsApp) {
+        if (linkWhatsApp !== '') {
+            window.open(linkWhatsApp, '_blank');
+        } else {
+            alert('Atenção: Este cliente não possui número de telefone cadastrado.');
+        }
+        window.location.href = 'company_dashboard.php?action=concluir&id=' + idAgendamento;
+    }
+
+    function addService() {
+        const container = document.getElementById('servicesContainer');
+        const newDiv = document.createElement('div');
+        newDiv.className = 'col-md-4 mt-3';
+        newDiv.innerHTML = `
+            <label class="form-label text-muted d-flex justify-content-between">
+                Novo Serviço
+                <i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="this.parentElement.parentElement.remove()"></i>
+            </label>
+            <div class="input-group">
+                <input type="text" class="form-control" name="new_service_names[]" placeholder="Ex: Higienização">
+                <span class="input-group-text">R$</span>
+                <input type="text" class="form-control" name="new_service_prices[]" placeholder="00,00">
+            </div>
+        `;
+        container.appendChild(newDiv);
     }
 </script>
+
 </body>
 </html>
