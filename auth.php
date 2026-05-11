@@ -1,32 +1,38 @@
 <?php
-ob_start(); 
 session_start();
 require 'db.php';
 
-$message = '';
+// --- AUTO-REPARO: Cria a coluna phone se ela não existir na tabela users ---
+try {
+    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)");
+} catch (Exception $e) {
+    // Se o banco não suportar IF NOT EXISTS, tentamos o método tradicional
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN phone VARCHAR(20)"); } catch (Exception $f) {}
+}
 
-// --- LÓGICA DE REGISTRO ---
-if (isset($_POST['register'])) {
-    $name = $_POST['name'];
-    $email = $_POST['email'];
+$error = '';
+$success = '';
+
+// --- LÓGICA DE REGISTO ---
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
+    $name = trim($_POST['name']);
+    $email = trim($_POST['email']);
+    $phone = trim($_POST['phone']);
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-    $role = $_POST['role'];
+    $role = $_POST['role']; // 'client' ou 'company'
 
-    $check = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-    $check->execute([$email]);
-
-    if ($check->rowCount() > 0) {
-        $message = "Erro: E-mail já cadastrado!";
-    } else {
-        $sql = "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)";
-        $pdo->prepare($sql)->execute([$name, $email, $password, $role]);
-        $message = "Sucesso: Conta criada! Faça login abaixo.";
+    try {
+        $stmt = $pdo->prepare("INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$name, $email, $phone, $password, $role]);
+        $success = "Conta criada com sucesso! Faça o login abaixo.";
+    } catch (PDOException $e) {
+        $error = "Erro: Este e-mail já está em uso.";
     }
 }
 
 // --- LÓGICA DE LOGIN ---
-if (isset($_POST['login'])) {
-    $email = $_POST['email'];
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
+    $email = trim($_POST['email']);
     $password = $_POST['password'];
 
     $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
@@ -35,63 +41,107 @@ if (isset($_POST['login'])) {
 
     if ($user && password_verify($password, $user['password'])) {
         $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_role'] = $user['role'];
         $_SESSION['user_name'] = $user['name'];
+        $_SESSION['user_role'] = $user['role'];
 
-        $destiny = ($user['role'] == 'company') ? 'company_dashboard.php' : 'index.php';
-        header("Location: $destiny");
+        if ($user['role'] == 'company') {
+            header("Location: company_dashboard.php");
+        } else {
+            header("Location: index.php");
+        }
         exit;
     } else {
-        $message = "Erro: E-mail ou senha incorretos!";
+        $error = "E-mail ou senha incorretos.";
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Wash Cars - Acesso</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso - Wash Cars</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #121212; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .box { background: #1e1e1e; padding: 30px; border-radius: 10px; width: 100%; max-width: 400px; border: 1px solid #333; }
-        .hidden { display: none; }
+        body { background: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
+        .auth-container { max-width: 400px; margin: 50px auto; }
+        .card { border: none; border-radius: 0; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .nav-tabs .nav-link { color: #666; border: none; font-weight: bold; }
+        .nav-tabs .nav-link.active { color: #D5001C; border-bottom: 3px solid #D5001C; background: none; }
+        .btn-danger { background-color: #D5001C; border: none; border-radius: 0; font-weight: bold; padding: 12px; }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h2 class="text-center">Wash Cars</h2>
-        <p class="text-center text-muted"><?= $message ?></p>
 
-        <div id="login-box">
-            <form method="POST">
-                <input type="email" name="email" class="form-control mb-2" placeholder="E-mail" required>
-                <input type="password" name="password" class="form-control mb-2" placeholder="Senha" required>
-                <button type="submit" name="login" class="btn btn-primary w-100">Entrar</button>
-            </form>
-            <button class="btn btn-link w-100 mt-2 text-info" onclick="toggle()">Criar uma conta</button>
-        </div>
-
-        <div id="register-box" class="hidden">
-            <form method="POST">
-                <input type="text" name="name" class="form-control mb-2" placeholder="Nome Completo" required>
-                <input type="email" name="email" class="form-control mb-2" placeholder="E-mail" required>
-                <input type="password" name="password" class="form-control mb-2" placeholder="Senha" required>
-                <select name="role" class="form-control mb-2">
-                    <option value="client">Cliente</option>
-                    <option value="company">Empresa (Dono)</option>
-                </select>
-                <button type="submit" name="register" class="btn btn-success w-100">Cadastrar</button>
-            </form>
-            <button class="btn btn-link w-100 mt-2 text-info" onclick="toggle()">Já tenho conta</button>
-        </div>
+<div class="auth-container">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold">WASH <span class="text-danger">CARS</span></h2>
+        <p class="text-muted">Gestão Inteligente de Lavagens</p>
     </div>
 
-    <script>
-        function toggle() {
-            document.getElementById('login-box').classList.toggle('hidden');
-            document.getElementById('register-box').classList.toggle('hidden');
-        }
-    </script>
+    <?php if($error): ?> <div class="alert alert-danger"><?= $error ?></div> <?php endif; ?>
+    <?php if($success): ?> <div class="alert alert-success"><?= $success ?></div> <?php endif; ?>
+
+    <div class="card">
+        <div class="card-body p-4">
+            <ul class="nav nav-tabs mb-4 justify-content-center" id="authTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button">LOGIN</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button">CADASTRO</button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="login">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">E-MAIL</label>
+                            <input type="email" name="email" class="form-control shadow-sm" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold">SENHA</label>
+                            <input type="password" name="password" class="form-control shadow-sm" required>
+                        </div>
+                        <button type="submit" name="login" class="btn btn-danger w-100">ENTRAR NO SISTEMA</button>
+                    </form>
+                </div>
+
+                <div class="tab-pane fade" id="register">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">NOME COMPLETO</label>
+                            <input type="text" name="name" class="form-control shadow-sm" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">E-MAIL</label>
+                            <input type="email" name="email" class="form-control shadow-sm" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">WHATSAPP (COM DDD)</label>
+                            <input type="text" name="phone" class="form-control shadow-sm" placeholder="Ex: 11999999999" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">SENHA</label>
+                            <input type="password" name="password" class="form-control shadow-sm" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold">EU SOU:</label>
+                            <select name="role" class="form-select shadow-sm">
+                                <option value="client">Cliente (Quero lavar meu carro)</option>
+                                <option value="company">Lava Jato (Quero gerir agendamentos)</option>
+                            </select>
+                        </div>
+                        <button type="submit" name="register" class="btn btn-danger w-100">CRIAR MINHA CONTA</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
