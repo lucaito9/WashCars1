@@ -167,7 +167,7 @@ try {
 <script>
     // Evita o reenvio de formulários ao atualizar a página (F5)
     if ( window.history.replaceState ) {
-        window.history.replaceState( null, null, window.location.href );
+        window.history.replaceState( null, null, window.location.href ); 
     }
 </script>
 </body>
