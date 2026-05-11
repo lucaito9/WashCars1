@@ -152,4 +152,4 @@ $my_cars = $stmt->fetchAll();
     </div>
 
 </body>
-</html>
+</html> 
