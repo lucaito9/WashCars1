@@ -1,7 +1,7 @@
 <?php
-$host = 'seu_host_aqui';      
-$db   = 'seu_banco_de_dados'; 
-$user = 'seu_usuario';       
+$host = 'lcalhost';      
+$db   = 'wash_ars'; 
+$user = 'luca.io';       
 $pass = 'sua_senha';         
 $charset = 'utf8mb4';
 
