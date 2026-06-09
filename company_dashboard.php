@@ -78,21 +78,55 @@ if (isset($_GET['action'])) {
 }
 
 // ---------------------------------------------------------
-// 3. BUSCAR DADOS DO BANCO (Totalmente protegido contra falhas)
+// 3. BUSCAR DADOS DO BANCO (Com Filtros)
 // ---------------------------------------------------------
 $appointments = [];
 $gastos_total = 0;
 $lista_gastos = [];
 
+// Captura a data e o status enviados pelos filtros (se houver)
+$data_filtro = $_GET['data_filtro'] ?? '';
+$status_filtro = $_GET['status_filtro'] ?? '';
+
 // Busca Agendamentos
 try {
-    $stmt = $pdo->query("
+    $sql_appointments = "
         SELECT a.*, u.name AS client_name, u.phone AS client_phone, c.brand, c.model, c.plate 
         FROM appointments a 
         LEFT JOIN users u ON a.user_id = u.id 
         LEFT JOIN user_cars c ON a.car_id = c.id 
-        ORDER BY a.appointment_date DESC
-    ");
+    ";
+
+    $where_clauses = [];
+    $params = [];
+
+    // Adiciona o filtro de data se foi preenchido
+    if (!empty($data_filtro)) {
+        $where_clauses[] = "DATE(a.appointment_date) = :data_filtro";
+        $params['data_filtro'] = $data_filtro;
+    }
+
+    // Adiciona o filtro de status se foi preenchido
+    if (!empty($status_filtro)) {
+        $where_clauses[] = "a.status = :status_filtro";
+        $params['status_filtro'] = $status_filtro;
+    }
+
+    // Monta o WHERE se houver filtros
+    if (!empty($where_clauses)) {
+        $sql_appointments .= " WHERE " . implode(" AND ", $where_clauses);
+    }
+
+    // Ordenação (Mais antigo primeiro se tiver filtro de data, senão os mais recentes primeiro)
+    if (!empty($data_filtro)) {
+        $sql_appointments .= " ORDER BY a.appointment_date ASC";
+    } else {
+        $sql_appointments .= " ORDER BY a.appointment_date DESC";
+    }
+
+    $stmt = $pdo->prepare($sql_appointments);
+    $stmt->execute($params);
+
     if ($stmt) {
         $appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -293,7 +327,28 @@ $lucro_total = $faturamento_total - $gastos_total;
     </div>
 
     <div class="table-container">
-        <h4 class="fw-bold mb-4">Gestão de Agendamentos</h4>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <h4 class="fw-bold mb-0">Gestão de Agendamentos</h4>
+            
+            <form method="GET" action="company_dashboard.php" class="d-flex gap-2 align-items-center flex-wrap">
+                <label for="data_filtro" class="fw-bold mb-0 text-nowrap text-muted"><i class="bi bi-calendar-event"></i> Data:</label>
+                <input type="date" id="data_filtro" name="data_filtro" class="form-control form-control-sm" style="width: auto;" value="<?= htmlspecialchars($data_filtro) ?>">
+                
+                <label for="status_filtro" class="fw-bold mb-0 text-nowrap text-muted ms-lg-2"><i class="bi bi-funnel"></i> Status:</label>
+                <select id="status_filtro" name="status_filtro" class="form-select form-select-sm" style="width: auto;">
+                    <option value="">Todos</option>
+                    <option value="Pendente" <?= $status_filtro == 'Pendente' ? 'selected' : '' ?>>Pendente</option>
+                    <option value="Confirmado" <?= $status_filtro == 'Confirmado' ? 'selected' : '' ?>>Confirmado</option>
+                    <option value="Concluído" <?= $status_filtro == 'Concluído' ? 'selected' : '' ?>>Concluído</option>
+                    <option value="Cancelado" <?= $status_filtro == 'Cancelado' ? 'selected' : '' ?>>Cancelado</option>
+                </select>
+
+                <button type="submit" class="btn btn-primary btn-sm fw-bold px-3">Buscar</button>
+                <a href="company_dashboard.php" class="btn btn-outline-secondary btn-sm px-3">Limpar</a>
+            </form>
+        </div>
+        
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="table-light">
@@ -359,7 +414,7 @@ $lucro_total = $faturamento_total - $gastos_total;
                         </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <tr><td colspan="7" class="text-center text-muted py-4">Nenhum agendamento encontrado.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-4">Nenhum agendamento encontrado para estes filtros.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
