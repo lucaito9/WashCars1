@@ -108,10 +108,10 @@ Foco Principal / Entregas Esperadas:
 * Sprint 4
 10/10 a 24/10 Integrações: Configuração do Login Social (Google) e implementação de notificações de lembrete (E-mail).
 
-# Sprint 5
+* Sprint 5
 25/10 a 08/11 Pagamentos e Avaliação: Integração da API de pagamentos (sinal) e criação da tela de avaliação de serviço pelo cliente.
 
-# Sprint 6
+* Sprint 6
 09/11 a 23/11 Testes e Correções: Testes de usabilidade finais, correção de bugs, testes de estresse na agenda. Congelamento de código (Code Freeze).
 
 # Sprint 7
