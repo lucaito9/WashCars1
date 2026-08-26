@@ -72,9 +72,4 @@ O projeto foi fruto de uma colaboração focada em excelência técnica:
 * **Gustavo Rocha** - *Backend & QA (Quality Assurance)*
     * Focado na implementação de regras de negócio, validações de formulários e testes de integridade do sistema.
  
-*## 📑 Documentação de Governança e Qualidade (2ª Avaliação Parcial - PI-III)
-
-Este espaço consolida as evidências técnicas e de gestão de projetos para a Unidade 2, demonstrando a rastreabilidade entre o planejamento e o MVP funcional da **Plataforma de Gestão para Lava Jatos**.
-
----
 
