@@ -49,7 +49,7 @@ O objetivo do MVP (Produto Mínimo Viável) é entregar um fluxo completo de age
 
 ---
 
-## 💻 Tecnologias Utilizadas
+##  Tecnologias Utilizadas
 
 * **Frontend:** HTML5, CSS3 (Custom Dark Theme), JavaScript e Bootstrap 5 para responsividade.
 * **Backend:** PHP 8+ (Processamento de rotas e lógica de negócio).
