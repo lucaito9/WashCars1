@@ -58,7 +58,7 @@ O objetivo do MVP (Produto Mínimo Viável) é entregar um fluxo completo de age
 
 ---
 
-##Requisitos 
+## Requisitos 
 
 1. Requisitos Funcionais (RF)
 
@@ -90,7 +90,7 @@ RNF05 (Segurança): As senhas dos usuários devem ser obrigatoriamente criptogra
 
 
  
-##Sprints 2 semestre 2026
+## Sprints 2 semestre 2026
 
 Sprint / Datas
 
