@@ -75,7 +75,10 @@ O projeto foi fruto de uma colaboração focada em excelência técnica:
 Sprints 2 semestre 2026
 
 Sprint / Datas
-Foco Principal - Entregas Esperadas: Sprint 1 
+
+Foco Principal - Entregas Esperadas: 
+
+Sprint 1 
 26/08 a 09/09 Refinamento de UX/UICriação da barra de progresso no formulário e revisão da responsividade (Mobile-first). 
 
 Sprint 2
