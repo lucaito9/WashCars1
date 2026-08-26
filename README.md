@@ -72,4 +72,27 @@ O projeto foi fruto de uma colaboração focada em excelência técnica:
 * **Gustavo Rocha** - *Backend & QA (Quality Assurance)*
     * Focado na implementação de regras de negócio, validações de formulários e testes de integridade do sistema.
  
+Sprints 2 semestre 2026
+
+Sprint / Datas
+Foco Principal - Entregas Esperadas: Sprint 1 
+26/08 a 09/09 Refinamento de UX/UICriação da barra de progresso no formulário e revisão da responsividade (Mobile-first). 
+
+Sprint 2
+10/09 a 24/09 Lógica Avançada: Implementação do controle dinâmico de tempo (bloquear mais horários para carros grandes) e agendamento recorrente.
+
+Sprint 3
+25/09 a 09/10 Painel do Admin: Desenvolvimento do Dashboard Financeiro e funcionalidade para atribuir lavagens a funcionários específicos.
+
+Sprint 4
+10/10 a 24/10 Integrações: Configuração do Login Social (Google) e implementação de notificações de lembrete (E-mail).
+
+Sprint 5
+25/10 a 08/11 Pagamentos e Avaliação: Integração da API de pagamentos (sinal) e criação da tela de avaliação de serviço pelo cliente.
+
+Sprint 6
+09/11 a 23/11 Testes e Correções: Testes de usabilidade finais, correção de bugs, testes de estresse na agenda. Congelamento de código (Code Freeze).
+Sprint 7
+24/11 a 30/11 Entrega Final: Ajustes no Plano de Ensino, geração de prints finais, preparação dos slides e ensaio para a banca.
+ 
 
