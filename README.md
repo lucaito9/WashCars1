@@ -96,16 +96,16 @@ Sprint / Datas
 
 Foco Principal / Entregas Esperadas: 
 
-* **Sprint 1 
+* Sprint 1 
 26/08 a 09/09 Refinamento de UX/UI: Criação da barra de progresso no formulário e revisão da responsividade (Mobile-first). 
 
-* **Sprint 2
+* Sprint 2
 10/09 a 24/09 Lógica Avançada: Implementação do controle dinâmico de tempo (bloquear mais horários para carros grandes) e agendamento recorrente.
 
-* **Sprint 3
+* Sprint 3
 25/09 a 09/10 Painel do Admin: Desenvolvimento do Dashboard Financeiro e funcionalidade para atribuir lavagens a funcionários específicos.
 
-* **Sprint 4
+* Sprint 4
 10/10 a 24/10 Integrações: Configuração do Login Social (Google) e implementação de notificações de lembrete (E-mail).
 
 # Sprint 5
