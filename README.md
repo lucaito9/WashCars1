@@ -114,7 +114,7 @@ Foco Principal / Entregas Esperadas:
 * Sprint 6
 09/11 a 23/11 Testes e Correções: Testes de usabilidade finais, correção de bugs, testes de estresse na agenda. Congelamento de código (Code Freeze).
 
-# Sprint 7
+* Sprint 7
 24/11 a 30/11 Entrega Final: Ajustes no Plano de Ensino, geração de prints finais, preparação dos slides e ensaio para a banca.
  
 
