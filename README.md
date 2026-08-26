@@ -60,7 +60,7 @@ O objetivo do MVP (Produto Mínimo Viável) é entregar um fluxo completo de age
 
 ## Requisitos 
 
-1. Requisitos Funcionais (RF)
+# 1. Requisitos Funcionais (RF)
 
 RF01: O sistema deve permitir o cadastro e login de clientes utilizando e-mail e senha.
 
@@ -76,7 +76,7 @@ RF06: O painel administrativo deve permitir a alteração do status do agendamen
 
 RF07: O sistema deve permitir que o cliente avalie o serviço (1 a 5 estrelas) após o status constar como "Finalizado".
 
-2. Requisitos Não Funcionais (RNF)
+# 2. Requisitos Não Funcionais (RNF)
 
 RNF01 (Usabilidade): A interface web deve ser totalmente responsiva (Mobile-First), adaptando-se perfeitamente a telas de celulares e computadores via HTML/CSS.
 
@@ -94,27 +94,27 @@ RNF05 (Segurança): As senhas dos usuários devem ser obrigatoriamente criptogra
 
 Sprint / Datas
 
-Foco Principal - Entregas Esperadas: 
+Foco Principal / Entregas Esperadas: 
 
-Sprint 1 
+# Sprint 1 
 26/08 a 09/09 Refinamento de UX/UI: Criação da barra de progresso no formulário e revisão da responsividade (Mobile-first). 
 
-Sprint 2
+# Sprint 2
 10/09 a 24/09 Lógica Avançada: Implementação do controle dinâmico de tempo (bloquear mais horários para carros grandes) e agendamento recorrente.
 
-Sprint 3
+# Sprint 3
 25/09 a 09/10 Painel do Admin: Desenvolvimento do Dashboard Financeiro e funcionalidade para atribuir lavagens a funcionários específicos.
 
-Sprint 4
+# Sprint 4
 10/10 a 24/10 Integrações: Configuração do Login Social (Google) e implementação de notificações de lembrete (E-mail).
 
-Sprint 5
+# Sprint 5
 25/10 a 08/11 Pagamentos e Avaliação: Integração da API de pagamentos (sinal) e criação da tela de avaliação de serviço pelo cliente.
 
-Sprint 6
+# Sprint 6
 09/11 a 23/11 Testes e Correções: Testes de usabilidade finais, correção de bugs, testes de estresse na agenda. Congelamento de código (Code Freeze).
 
-Sprint 7
+# Sprint 7
 24/11 a 30/11 Entrega Final: Ajustes no Plano de Ensino, geração de prints finais, preparação dos slides e ensaio para a banca.
  
 
